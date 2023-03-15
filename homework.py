@@ -3,9 +3,9 @@
 load_dotenv()
 
 
-PRACTICUM_TOKEN = ...
-TELEGRAM_TOKEN = ...
-TELEGRAM_CHAT_ID = ...
+PRACTICUM_TOKEN = 'y0_AgAAAAAP4NtDAAYckQAAAADekkHjZ0pmdVLLSBWlXaJEFDYbWXc3sDc'
+TELEGRAM_TOKEN = '5983024807:AAHxXF7SgtKrOVLZ-SAIvhwTW_Q_AfNeo4U'
+TELEGRAM_CHAT_ID = '103037143'
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
