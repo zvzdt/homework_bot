@@ -38,12 +38,12 @@ handler.setFormatter(formatter)
 
 
 def check_tokens():
-    """доступность переменных окружения"""
+    """Доступность переменных окружения."""
     return all([PRACTICUM_TOKEN, TELEGRAM_TOKEN, TELEGRAM_CHAT_ID])
 
 
 def send_message(bot, message):
-    """отправляет сообщение в Telegram"""
+    """Отправляет сообщение в Telegram."""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except telegram.error.TelegramError:
@@ -53,7 +53,7 @@ def send_message(bot, message):
 
 
 def get_api_answer(timestamp):
-    """запрос к эндпоинту API"""
+    """Запрос к эндпоинту API."""
     timestamp = int(time.time())
     payload = {'from_date': timestamp}
     try:
@@ -68,7 +68,7 @@ def get_api_answer(timestamp):
 
 
 def check_response(response):
-    """ответ API на соответствие документации"""
+    """Ответ API на соответствие документации."""
     if not isinstance(response, dict):
         error_msg = 'неправильный тип данных'
         raise TypeError(error_msg)
@@ -82,7 +82,7 @@ def check_response(response):
 
 
 def parse_status(homework):
-    """извлекает статус домашней работы"""
+    """Извлекает статус домашней работы."""
     if 'homework_name' not in homework:
         error_msg = 'нет такого ключа'
         raise KeyError(error_msg)
