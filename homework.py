@@ -14,19 +14,27 @@ load_dotenv()
 
 
 PRACTICUM_TOKEN = os.getenv('PT')
-TELEGRAM_TOKEN = os.getenv('TT') 
+TELEGRAM_TOKEN = os.getenv('TT')
 TELEGRAM_CHAT_ID = os.getenv('TCI')
 
 RETRY_PERIOD = 600
 ENDPOINT = 'https://practicum.yandex.ru/api/user_api/homework_statuses/'
 HEADERS = {'Authorization': f'OAuth {PRACTICUM_TOKEN}'}
 
-
 HOMEWORK_VERDICTS = {
     'approved': 'Работа проверена: ревьюеру всё понравилось. Ура!',
     'reviewing': 'Работа взята на проверку ревьюером.',
     'rejected': 'Работа проверена: у ревьюера есть замечания.'
 }
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+handler = logging.StreamHandler(stream=sys.stdout)
+logger.addHandler(handler)
+formatter = logging.Formatter(
+    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+handler.setFormatter(formatter)
 
 
 def check_tokens():
@@ -38,8 +46,10 @@ def send_message(bot, message):
     """отправляет сообщение в Telegram"""
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
-    except Exception as error:
-        print(f'Сообщение не отправлено: {error}')
+    except telegram.error.TelegramError:
+        logger.error('Ошибака, сообщение не отправлено')
+    else:
+        logger.debug('Сообщение отправлено')
 
 
 def get_api_answer(timestamp):
@@ -48,13 +58,14 @@ def get_api_answer(timestamp):
     payload = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
-        if response.status_code != HTTPStatus.OK:
-            error_msg = 'нет ответа API'
-            raise requests.exceptions.HTTPError(error_msg)   
-        return response.json()
-    except requests.exceptions.RequestException as error:
-        print(f'код ответа API: {error}')
-        
+    except Exception:
+        raise telegram.error.NetworkError('Эндпоинт недоступен')
+    if response.status_code != HTTPStatus.OK:
+        raise requests.exceptions.HTTPError(
+            'Получен неправильный код ответа API'
+        )
+    return response.json()
+
 
 def check_response(response):
     """ответ API на соответствие документации"""
@@ -88,41 +99,28 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    bot = telegram.Bot(token=TELEGRAM_TOKEN)
-    timestamp = int(time.time())
-    
-    logging.basicConfig(
-        level=logging.DEBUG,
-        filename='program.log', 
-        format='%(asctime)s, %(levelname)s, %(message)s, %(name)s'
-    )
-
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.INFO)
-    handler = logging.StreamHandler(stream=sys.stdout)
-    logger.addHandler(handler)
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-    )
-    handler.setFormatter(formatter)
-
     if check_tokens() is False:
         error_msg = 'Отсутствуют необходиме переменные окружения'
         logger.critical(error_msg)
         sys.exit(error_msg)
+    bot = telegram.Bot(token=TELEGRAM_TOKEN)
+    current_timestamp = 0
+    prev_message = ''
+
     while True:
         logger.info('Бот запущен')
         try:
-            response = get_api_answer(timestamp)
+            response = get_api_answer(current_timestamp)
             homeworks = check_response(response)
             if not homeworks:
                 logger.info('статус проверки не измениля')
             else:
                 message = parse_status(homeworks[0])
-                send_message(bot, message)
-                timestamp = response('current date')
+                if message != prev_message:
+                    send_message(bot, message)
+                    prev_message = message
         except Exception as error:
-            message = f'Сбой в работе программы: {error}'
+            logging.error(f'Сбой в работе программы: {error}')
         finally:
             time.sleep(RETRY_PERIOD)
 
