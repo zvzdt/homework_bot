@@ -1,13 +1,13 @@
 import logging
-import requests
 import time
 import sys
+import os
 from http import HTTPStatus
 
-import os
+import requests
 import telegram
-
 from dotenv import load_dotenv
+import exceptions
 
 
 load_dotenv()
@@ -54,15 +54,17 @@ def send_message(bot, message):
 
 def get_api_answer(timestamp):
     """Запрос к эндпоинту API."""
-    timestamp = int(time.time())
     payload = {'from_date': timestamp}
     try:
         response = requests.get(ENDPOINT, headers=HEADERS, params=payload)
     except Exception:
-        raise telegram.error.NetworkError('Эндпоинт недоступен')
+        raise exceptions.ApiResonseError(
+            f'Эндпоинт {ENDPOINT} недоступен'
+        )
     if response.status_code != HTTPStatus.OK:
-        raise requests.exceptions.HTTPError(
-            'Получен неправильный код ответа API'
+        raise exceptions.StatusCodeError(
+            f'Получен неправильный код ответа API:'
+            f'{response.status_code}'
         )
     return response.json()
 
@@ -70,24 +72,25 @@ def get_api_answer(timestamp):
 def check_response(response):
     """Ответ API на соответствие документации."""
     if not isinstance(response, dict):
-        error_msg = 'неправильный тип данных'
+        error_msg = f'{type(response)} не является словарем.'
         raise TypeError(error_msg)
     if 'homeworks' not in response or 'current_date' not in response:
-        error_msg = 'неправильный ключ'
+        error_msg = f'В ответе отстувуют ожидаемые ключи: {"homeworks"}'
+        f'или {"current_date"}.'
         raise KeyError(error_msg)
     homeworks = response.get('homeworks')
     if not isinstance(homeworks, list):
-        raise TypeError('Homeworks не является списком')
+        raise TypeError(f'{type(homeworks)} не является списком.')
     return homeworks
 
 
 def parse_status(homework):
     """Извлекает статус домашней работы."""
     if 'homework_name' not in homework:
-        error_msg = 'нет такого ключа'
+        error_msg = 'Отствует ключ "homework_name".'
         raise KeyError(error_msg)
     if 'status' not in homework:
-        error_msg = 'нет такого ключа'
+        error_msg = 'Отствует ключ "status".'
         raise KeyError(error_msg)
     homework_name = homework.get('homework_name')
     homework_status = homework.get('status')
@@ -99,7 +102,7 @@ def parse_status(homework):
 
 def main():
     """Основная логика работы бота."""
-    if check_tokens() is False:
+    if not check_tokens():
         error_msg = 'Отсутствуют необходиме переменные окружения'
         logger.critical(error_msg)
         sys.exit(error_msg)
@@ -119,8 +122,11 @@ def main():
                 if message != prev_message:
                     send_message(bot, message)
                     prev_message = message
+                    current_timestamp = response.get('current_date')
         except Exception as error:
-            logging.error(f'Сбой в работе программы: {error}')
+            message = f"Сбой в работе программы: {error}"
+            logger.exception(message)
+            send_message(bot, message)
         finally:
             time.sleep(RETRY_PERIOD)
 
