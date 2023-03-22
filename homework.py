@@ -7,6 +7,7 @@ from http import HTTPStatus
 import requests
 import telegram
 from dotenv import load_dotenv
+
 import exceptions
 
 
@@ -109,6 +110,7 @@ def main():
     bot = telegram.Bot(token=TELEGRAM_TOKEN)
     current_timestamp = 0
     prev_message = ''
+    error_message = ''
 
     while True:
         logger.info('Бот запущен')
@@ -122,11 +124,13 @@ def main():
                 if message != prev_message:
                     send_message(bot, message)
                     prev_message = message
-                    current_timestamp = response.get('current_date')
+            current_timestamp = response.get('current_date')
         except Exception as error:
             message = f"Сбой в работе программы: {error}"
             logger.exception(message)
-            send_message(bot, message)
+            if message != error_message:
+                send_message(bot, message)
+                error_message = message
         finally:
             time.sleep(RETRY_PERIOD)
 
