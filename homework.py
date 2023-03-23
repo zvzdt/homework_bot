@@ -48,7 +48,8 @@ def send_message(bot, message):
     try:
         bot.send_message(TELEGRAM_CHAT_ID, message)
     except telegram.error.TelegramError:
-        logger.error('Ошибака, сообщение не отправлено')
+        logger.error('Ошибка, сообщение не отправлено')
+        raise exceptions.SendMessageError('Ошибка, сообщение не отправлено')
     else:
         logger.debug('Сообщение отправлено')
 
@@ -101,7 +102,7 @@ def parse_status(homework):
     return f'Изменился статус проверки работы "{homework_name}". {verdict}'
 
 
-def main():
+def main():  # noqa: C901
     """Основная логика работы бота."""
     if not check_tokens():
         error_msg = 'Отсутствуют необходиме переменные окружения'
@@ -125,12 +126,17 @@ def main():
                     send_message(bot, message)
                     prev_message = message
             current_timestamp = response.get('current_date')
+        except exceptions.SendMessageError:
+            pass
         except Exception as error:
             message = f"Сбой в работе программы: {error}"
             logger.exception(message)
             if message != error_message:
-                send_message(bot, message)
-                error_message = message
+                try:
+                    send_message(bot, message)
+                    error_message = message
+                except exceptions.SendMessageError:
+                    pass
         finally:
             time.sleep(RETRY_PERIOD)
 

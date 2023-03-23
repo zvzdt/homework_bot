@@ -6,3 +6,7 @@ class ApiResonseError(Exception):
 class StatusCodeError(Exception):
     """Получен код ответа, отличный от ожидаемого."""
     pass
+
+class SendMessageError(Exception):
+    """Сообщение не отправлено."""
+    pass
